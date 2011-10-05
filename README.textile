@@ -1,0 +1,87 @@
+h1. Elasticsearch River for Elasticsearch
+
+Welcome to the Elasticsearch River Plugin for "Elasticsearch":http://www.elasticsearch.org/ 
+
+h2. Getting Started
+
+h3. Installation
+
+Just type :
+
+<pre>
+$ bin\plugin -install dadoonet/esriver/0.0.1
+</pre>
+
+This will do the job...
+
+<pre>
+-> Installing dadoonet/esriver/0.0.1...
+Trying https://github.com/downloads/dadoonet/esriver/rssriver-0.0.1.zip...
+Downloading ...DONE
+Installed esriver
+</pre>
+
+h3. Creating an Elasticsearch river
+
+@TODO@
+
+We create first an index to store all the @documents@ :
+
+<pre>
+$ curl -XPUT 'localhost:9200/escopy/' -d '{}'
+</pre>
+
+We create the river with the following properties :
+
+* ES Source URL : http://localhost:9200/
+
+<pre>
+$ curl -XPUT 'localhost:9200/_river/escopy/_meta' -d '{
+  "type": "es",
+  "es": {
+    "url": "http://localhost:9200/"
+  }
+}'
+</pre>
+
+h3. Working with mappings
+
+When you create your index, you can specify the mapping you want to use as follow :
+
+<pre>
+$ curl -XPUT 'http://localhost:9200/escopy/' -d '
+
+$ curl -XPUT 'http://localhost:9200/escopy/page/_mapping' -d '{
+    "page" : {
+        "properties" : {
+            "title" : {"type" : "string", "analyzer" : "french"},
+            "description" : {"type" : "string", "analyzer" : "french"},
+            "author" : {"type" : "string"},
+            "link" : {"type" : "string"}
+        }
+    }
+}'
+</pre>
+
+Then, your feed will use it when you create the river :
+
+<pre>
+$ curl -XPUT 'localhost:9200/_river/lefigaro/_meta' -d '{
+  "type": "rss",
+  "rss": {
+    "url": "http://rss.lefigaro.fr/lefigaro/laune"
+  }
+}'
+</pre>
+
+h2. Behind the scene
+
+@TODO@
+
+
+h1. To Do List
+
+Many many things to do :
+
+* @TODO@
+
