@@ -59,7 +59,9 @@ public class EsRiver extends AbstractRiverComponent implements River {
 
 	private final Client client;
 
-	private final String url;
+	private final String indexSrc;
+
+	private final String typeSrc;
 
 	private final String indexName;
 
@@ -69,43 +71,36 @@ public class EsRiver extends AbstractRiverComponent implements River {
 
 	private volatile boolean closed = false;
 
-	private final int updateRate;
-
 	@SuppressWarnings({ "unchecked" })
 	@Inject
-	public EsRiver(RiverName riverName, RiverSettings settings, Client client)
-			throws MalformedURLException {
+	public EsRiver(RiverName riverName, RiverSettings settings, Client client) {
 		super(riverName, settings);
 		this.client = client;
 
-		if (settings.settings().containsKey("rss")) {
-			Map<String, Object> rssSettings = (Map<String, Object>) settings.settings().get("rss");
-			url = XContentMapValues.nodeStringValue(rssSettings.get("url"), null);
-			updateRate  = XContentMapValues.nodeIntegerValue(rssSettings.get("update_rate"), 15 * 60 * 1000);
-		} else {
-			url = "http://www.lemonde.fr/rss/une.xml";
-			logger.warn("You didn't define the rss url. Switching to defaults : [{}]", url);
-			updateRate = 15 * 60 * 1000;
-		}
-
-		if (logger.isInfoEnabled()) logger.info("creating rss stream river for [{}]", url);
-		
 		if (settings.settings().containsKey("index")) {
-			Map<String, Object> indexSettings = (Map<String, Object>) settings
-					.settings().get("index");
-			indexName = XContentMapValues.nodeStringValue(
-					indexSettings.get("index"), riverName.name());
-			typeName = XContentMapValues.nodeStringValue(
-					indexSettings.get("type"), "page");
+			Map<String, Object> indexSettings = (Map<String, Object>) settings.settings().get("index");
+			indexName = XContentMapValues.nodeStringValue(indexSettings.get("index"), riverName.name());
+			typeName = XContentMapValues.nodeStringValue(indexSettings.get("type"), null);
 		} else {
 			indexName = riverName.name();
 			typeName = "page";
 		}
+
+		if (settings.settings().containsKey("es")) {
+			Map<String, Object> rssSettings = (Map<String, Object>) settings.settings().get("es");
+			indexSrc = XContentMapValues.nodeStringValue(rssSettings.get("index"), indexName);
+			typeSrc = XContentMapValues.nodeStringValue(rssSettings.get("type"), null);
+			if (typeSrc == null) throw new IllegalArgumentException("You didn't define the es river mandatory property [es.type]");
+		} else {
+			throw new IllegalArgumentException("You must define the es river properties.");
+		}
+	
+		if (logger.isInfoEnabled()) logger.info("creating es stream river for [{}, {}]", indexSrc, typeSrc);
 	}
 
 	@Override
 	public void start() {
-		if (logger.isInfoEnabled()) logger.info("Starting rss stream");
+		if (logger.isInfoEnabled()) logger.info("Starting es stream");
 		try {
 			client.admin().indices().prepareCreate(indexName).execute()
 					.actionGet();
@@ -170,7 +165,7 @@ public class EsRiver extends AbstractRiverComponent implements River {
 				}
 				
 				// Let's call the Rss flow
-				SyndFeed feed = getFeed(url);
+				SyndFeed feed = getFeed(indexSrc);
 				Date feedDate = feed.getPublishedDate();
 				logger.debug("Feed publish date is {}", feedDate);
 
@@ -261,8 +256,8 @@ public class EsRiver extends AbstractRiverComponent implements River {
 				
 				
 				try {
-					if (logger.isDebugEnabled()) logger.debug("Rss river is going to sleep for {} ms", updateRate);
-					Thread.sleep(updateRate);
+					if (logger.isDebugEnabled()) logger.debug("Rss river is going to sleep for {} ms", 10000);
+					Thread.sleep(10000);
 					continue;
 				} catch (InterruptedException e1) {
 					if (closed) {
